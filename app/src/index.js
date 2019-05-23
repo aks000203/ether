@@ -1,70 +1,61 @@
-//import "../src/app.css";
+// import "../src/app.css";
 
-// var Web3 = require('web3');
 
-import Web3 from "web3";
-import votingArtifact from "../../build/contracts/Voting.json";
 
-let candidates = {"Rama": "candidate-1", "Nick": "candidate-2", "Jose": "candidate-3"}
+import { default as Web3} from 'web3';
+import {default as contract} from 'truffle-contract'
 
-const App = {
- web3: null,
- account: null,
- voting: null,
+import voting_artifacts from "../../build/contracts/Voting.json";
+var Voting= contract(voting_artifacts);
+var accounts;
+var account;
 
- start: async function() {
-  const { web3 } = this;
+var candidates = {"Rama": "candidate-1", "Nick": "candidate-2", "Jose": "candidate-3"}
+window.App = {
+  start: function() {
+    var self=this;
 
-  try {
-   // get contract instance
-   const networkId = await web3.eth.net.getId();
-   const deployedNetwork = votingArtifact.networks[networkId];
-   this.voting = new web3.eth.Contract(
-    votingArtifact.abi,
-    deployedNetwork.address,
-   );
-
-   // get accounts
-   const accounts = await web3.eth.getAccounts();
-   this.account = accounts[0];
-
-   this.loadCandidatesAndVotes();
-  } catch (error) {
-   console.error("Could not connect to contract or chain.");
+  Voting.setProvider(web3.currentProvider);
+  web3.eth.getAccounts(function(err , accs){
+if (err !=null) {
+  alert("there was an error fetching your acc");
+  return;
+}
+  if (accs.length ==0) {
+    alert("coud not get any acc sure ur eth client is con.....");
+    return;
   }
- },
+  accounts=accs;
+  account=accounts[0];
+});
 
- loadCandidatesAndVotes: async function() {
-  // The line below loads the totalVotesFor method from the list of methods 
-// returned by this.voting.methods
-  const { totalVotesFor } = this.voting.methods;
-  let candidateNames = Object.keys(candidates);
-  for (var i = 0; i < candidateNames.length; i++) {
-   let name = candidateNames[i];
-   var count = await totalVotesFor(this.web3.utils.asciiToHex(name)).call();
-   $("#" + candidates[name]).html(count);
+  self.loadCandidatesAndVotes();
+},
+
+loadCandidatesAndVotes: function() {
+  var candidateNames = Object.keys(candidates);
+
+  for(var i=0; i<candidateNames.length; i++) {
+    let name =candidateNames[i];
+    Voting.deployed().then(function(f){
+      f.totalVotesFor.call(name).then(function(f) {
+        $("#" + candidates[name]).html(f.toNumber());
+      })
+     })
+     }
+
+     }
+
+     };
+
+
+window.addEventListener('load', function() {
+  if (typeof web3 !== 'undefined') {
+    console.warn(".......................................")
+    window.Web3 =new Web3(web3.currentProvider);
+  } else {
+    console.warn("no web 3 detected 2nd line ");
+    window.web3 = new Web3(new Web3.provider.HttpProvider("http://127.0.0.1:8545"));
   }
- },
-
-  
-};
-
-window.App = App;
-
-window.addEventListener("load", function() {
- if (window.ethereum) {
-  // use MetaMask's provider
-  App.web3 = new Web3(window.ethereum);
-  window.ethereum.enable(); // get permission to access accounts
- } else {
-  console.warn(
-   "No web3 detected. Falling back to http://127.0.0.1:8545. You should remove this fallback when you deploy live",
-  );
-  // fallback - use your fallback strategy (local node / hosted node + in-dapp id mgmt / fail)
-  App.web3 = new Web3(
-   new Web3.providers.HttpProvider("http://127.0.0.1:8545"),
-  );
- }
-
- App.start();
+  App.start();
 });
